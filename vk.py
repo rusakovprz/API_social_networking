@@ -11,6 +11,7 @@
 """
 
 import httplib
+import json
   
 class vk():
   def __init__(self, configuration):
@@ -40,8 +41,6 @@ class vk():
     self.__connect.request( "GET", url)	  
     response=self.__connect.getresponse()
     print response.read()
-    
-    # TODO: print заменить на return, пи этом разобраться с кодировкой 
 
     
   @staticmethod  
@@ -63,22 +62,25 @@ class vk():
     return out_string.rstrip(',')
 
 
-  def execute(self, method_name, *return_data, **in_arguments):
+  def execute(self, method_name, *list_keys, **in_arguments):
     """
       Универсальный метод, который позволяет запускать вызывать любой метод API,
       с производьным числом аргументов и серриализацией возвращаемых данных.    
+      
+      method_name  -- название метода 
+      list_keys    -- 
+      in_arguments -- вргументы вызываемого метода
     
     >>> config = {}  
     >>> obj = vk(config)
     >>> user_IDs = vk.list_IDs_to_string( [1,2] )
-
-    >>> obj.execute("users.get", user_ids=user_IDs)
-    {"response":[{"uid":1,"first_name":"Павел","last_name":"Дуров"},{"uid":2,"first_name":"Александра","last_name":"Владимирова","hidden":1}]}
+    >>> ret = obj.execute("users.get", 'uid', user_ids=user_IDs)
+    >>> ret[0][0]
+    1
+    >>> ret[1][0]
+    2
     
     """
-    #print method_name
-    #print return_data
-    #print in_arguments
     
     url = "/method/" + method_name
     
@@ -87,20 +89,71 @@ class vk():
     
     for key in in_arguments.keys():
       url += key + "=" + in_arguments[key] + ","
-    
     url.lstrip(",")
-    
-    #print "url = ", url
     
     self.__connect.request( "GET", url)	  
     response=self.__connect.getresponse()
-    print response.read()
     
-    # TODO
-    # - Серриализация возвращаемых данных на основании списка return_data
-    # - print заменить на return, пи этом разобраться с кодировкой        
+    json_data = json.loads( response.read() )
     
+    if json_data.has_key('response'):
+      
+      return  self.serialization(json_data.get('response'), list_keys)
+            
+    elif json_data.has_key("error"):
+      error_string = 'От REST-server Получена ошибка.\n'
+      error_string += 'error_code     = ' + str(json_data.get('error').get('error_code')) + '\n'
+      error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
+      error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
+      raise BaseException(error_string)
     
+
+  @staticmethod  
+  def serialization(data, list_keys):
+    """
+    >>> data = []
+    >>> keys = []
+    >>> vk.serialization(data, keys )
+    []
+        
+    >>> data = [{'key1':'value11', 'key2':'value12', 'key3':'value13'}, {'key1':'value21', 'key2':'value22', 'key3':'value23'}]
+    >>> keys = []
+    >>> vk.serialization(data, keys )
+    [('value13', 'value12', 'value11'), ('value23', 'value22', 'value21')]
+    
+    >>> keys = ['key1', 'key2', 'key3']
+    >>> vk.serialization(data, keys )
+    [('value11', 'value12', 'value13'), ('value21', 'value22', 'value23')]
+    
+    >>> keys = ['key1', 'key3']
+    >>> vk.serialization(data, keys )
+    [('value11', 'value13'), ('value21', 'value23')]
+        
+    >>> keys = ['key3', 'key2', 'key1']
+    >>> vk.serialization(data, keys )
+    [('value13', 'value12', 'value11'), ('value23', 'value22', 'value21')]
+       
+    """    
+    
+    if len(data) == 0:
+      return []
+    
+    if len(list_keys) == 0:
+      list_keys = data[0].keys()
+
+    return_list = []
+    
+    for index in range(len(data)):
+      tmp_list = []
+      for key in list_keys:
+        tmp_list.append(data[index].get(key))
+      
+      return_list.append(tuple(tmp_list))      
+    
+    return return_list 
+
+
+
 if __name__ == "__main__":
 
   import doctest 
