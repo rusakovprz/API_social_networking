@@ -4,7 +4,7 @@
   File: vk.py
   
   Description:
-    API for social network Vkontakte http://vk.com    
+    API for social network Vkontakte http://vk.com/dev    
 
   Author: Rusakov Alexey <rusakovprz@rambler.ru> 
 
@@ -14,38 +14,77 @@ import httplib
 import json
   
 class vk():
-  def __init__(self, configuration):
-    """ Конфигурационные данные. """
-    self.__configuration = configuration
+  def __init__(self):
+    
     """" Имя узла предоставляющего API. """
     self.__host = 'api.vk.com'
     self.__connect = httplib.HTTPSConnection(self.__host)
   
   def __del__(self):
-    pass
+    self.__connect.close()
     
-  def get_user(self, user_IDs):
-    """
-      user_IDs -- список идентификаторов пользователей.
-    
-      >>> config = {}  
-      >>> obj = vk(config)
-  
-      >>> user_IDs = [1,2]
-      >>> obj.get_user(user_IDs)
-      {"response":[{"uid":1,"first_name":"Павел","last_name":"Дуров"},{"uid":2,"first_name":"Александра","last_name":"Владимирова","hidden":1}]}
-    """  
 
-    url = "/method/users.get?user_ids=" + self.list_IDs_to_string(user_IDs) 
-     
+  def execute(self, method_name, *list_keys, **in_arguments):
+    """
+      Универсальный метод, который позволяет вызывать любой метод API,
+      с производьным числом аргументов и сериализацией возвращаемых данных.    
+      
+      method_name  -- название метода 
+      list_keys    -- список ключей ответного сообщения
+      in_arguments -- вргументы вызываемого метода
+      
+      list_keys используется для сериализаци данных полученный от REST-сервера.
+      Если list_keys отсутствует, метод вернёт ответ полученный от REST-сервера,
+      иначе будет возвращен список кортежей, каждый элемент кортежа содержит
+      данные соответствующие ключам list_keys.  
+       
+    >>> obj = vk()
+    >>> user_IDs = vk.list_IDs_to_string( [1,2] )
+    >>> print obj.execute("users.get", user_ids=user_IDs)
+    {"response":[{"uid":1,"first_name":"Павел","last_name":"Дуров"},{"uid":2,"first_name":"Александра","last_name":"Владимирова","hidden":1}]}
+      
+    >>> ret = obj.execute("users.get", 'uid', 'last_name', user_ids=user_IDs)
+    >>> print ret
+    [(1, u'\u0414\u0443\u0440\u043e\u0432'), (2, u'\u0412\u043b\u0430\u0434\u0438\u043c\u0438\u0440\u043e\u0432\u0430')]
+    
+    """
+    
+    url = "/method/" + method_name
+    
+    if len(in_arguments) > 0:
+      url += "?"
+    
+    for key in in_arguments.keys():
+      url += key + "=" + in_arguments[key] + ","
+    url.lstrip(",")
+    
     self.__connect.request( "GET", url)	  
     response=self.__connect.getresponse()
-    print response.read()
-
     
+    answer = response.read()
+    json_data = json.loads( answer )
+    
+    if json_data.has_key('response'):
+      
+      if len(list_keys) == 0:
+        return answer
+      else:
+        return  self.serialization(json_data.get('response'), list_keys)
+            
+    elif json_data.has_key("error"):
+      error_string = 'От REST-server Получена ошибка.\n'
+      error_string += 'error_code     = ' + str(json_data.get('error').get('error_code')) + '\n'
+      error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
+      error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
+      raise BaseException(error_string)
+
+
   @staticmethod  
   def list_IDs_to_string(user_IDs):
     """
+      Преобразует список целочисленных идентификаторов в строку, 
+      записывая их через запятую.
+    
     >>> vk.list_IDs_to_string([])
     ''
     >>> vk.list_IDs_to_string([1])
@@ -62,55 +101,17 @@ class vk():
     return out_string.rstrip(',')
 
 
-  def execute(self, method_name, *list_keys, **in_arguments):
-    """
-      Универсальный метод, который позволяет запускать вызывать любой метод API,
-      с производьным числом аргументов и серриализацией возвращаемых данных.    
-      
-      method_name  -- название метода 
-      list_keys    -- 
-      in_arguments -- вргументы вызываемого метода
-    
-    >>> config = {}  
-    >>> obj = vk(config)
-    >>> user_IDs = vk.list_IDs_to_string( [1,2] )
-    >>> ret = obj.execute("users.get", 'uid', user_ids=user_IDs)
-    >>> ret[0][0]
-    1
-    >>> ret[1][0]
-    2
-    
-    """
-    
-    url = "/method/" + method_name
-    
-    if len(in_arguments) > 0:
-      url += "?"
-    
-    for key in in_arguments.keys():
-      url += key + "=" + in_arguments[key] + ","
-    url.lstrip(",")
-    
-    self.__connect.request( "GET", url)	  
-    response=self.__connect.getresponse()
-    
-    json_data = json.loads( response.read() )
-    
-    if json_data.has_key('response'):
-      
-      return  self.serialization(json_data.get('response'), list_keys)
-            
-    elif json_data.has_key("error"):
-      error_string = 'От REST-server Получена ошибка.\n'
-      error_string += 'error_code     = ' + str(json_data.get('error').get('error_code')) + '\n'
-      error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
-      error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
-      raise BaseException(error_string)
-    
-
   @staticmethod  
   def serialization(data, list_keys):
     """
+      Преобразует именованные списки в кортежи. В кортежи попадают только те
+      элементы списка ключи которых совпадают со значениями элементов 
+      списка list_keys  
+      
+      data      -- входные данные
+      list_keys -- Список ключей, соответствующие которым данные попадают в 
+      элементы выходных кортежей
+    
     >>> data = []
     >>> keys = []
     >>> vk.serialization(data, keys )
