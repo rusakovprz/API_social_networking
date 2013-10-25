@@ -56,7 +56,7 @@ class vk():
     
     for key in in_arguments.keys():
       url += key + "=" + in_arguments[key] + ","
-    url.lstrip(",")
+    url = url.rstrip(",")
     
     self.__connect.request( "GET", url)	  
     response=self.__connect.getresponse()
