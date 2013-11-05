@@ -146,11 +146,14 @@ class vk():
     
     for index in range(len(data)):
       tmp_list = []
-      for key in list_keys:
-        tmp_list.append(data[index].get(key))
+      try:
+        for key in list_keys:
+          value = data[index].get(key)
+          tmp_list.append(value)
+        return_list.append(tuple(tmp_list))      
+      except:
+        pass
       
-      return_list.append(tuple(tmp_list))      
-    
     return return_list 
 
 
