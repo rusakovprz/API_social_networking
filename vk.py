@@ -19,7 +19,9 @@ class vk():
     """" Имя узла предоставляющего API. """
     self.__host = 'api.vk.com'
     self.__connect = httplib.HTTPSConnection(self.__host)
-  
+    self.__counts_records = None
+    
+      
   def __del__(self):
     self.__connect.close()
     
@@ -66,6 +68,32 @@ class vk():
     
     if json_data.has_key('response'):
       
+      """ 
+        Определяем и сохраняем значение количества полученных записей. 
+        
+        FIXME: Возвращаемые структуры зависят от метода и содержимого ответов.
+               Этот код следует переделать в рамках #10 
+      """
+      content = json_data.get('response')
+            
+      if len(content) == 0:
+        self.__counts_records = 0
+      else:
+        
+        if "<type 'list'>" == str(type(content)):
+          if "<type 'int'>" == str( type(content[0]) ):
+            self.__counts_records = content[0]
+          else:
+            self.__counts_records = (len(content))
+        
+        elif "<type 'dict'>" == str(type(content)): 
+          self.__counts_records = len(content)
+      
+        else:
+          pass
+          
+      """ Возвращаем данные полученные в ответе на запрос """
+      
       if len(list_keys) == 0:
         return answer
       else:
@@ -77,6 +105,18 @@ class vk():
       error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
       error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
       raise BaseException(error_string)
+
+
+  def get_count(self):
+    """
+      Возвращает количество найденных записей для выборки определенного
+      подмножества, полученных в результате последнего вызова метода execute.
+      
+      Уточнение: Количество найденных и возвращённых записей в большенстве случаев не зовпадают.
+      Наёденных всегда больше.
+    """
+    
+    return self.__counts_records
 
 
   @staticmethod  
