@@ -12,6 +12,7 @@
 
 import httplib
 import json
+import threading
   
 class vk():
   def __init__(self):
@@ -19,8 +20,13 @@ class vk():
     """" Имя узла предоставляющего API. """
     self.__host = 'api.vk.com'
     self.__connect = httplib.HTTPSConnection(self.__host)
+    """ Количество записей полученных для последнего запроса """    
     self.__counts_records = None
     
+    """ Блокировщик, используется в многопоточной реализации execute, 
+      для защиты массива в который 'собираются' все дянные полученные
+      от сервера из нескольких потоков. """
+    self.locker = threading.Lock()
       
   def __del__(self):
     self.__connect.close()
@@ -126,6 +132,59 @@ class vk():
       error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
       error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
       raise BaseException(error_string)
+
+
+  def multi_threading_execute(self, args_list):
+    """
+      Многопоточный вариант метода execute().
+      args_list -- 
+            
+    >>> rest = vk()
+    >>> args_list=[('users.get', ['uid', 'first_name', 'last_name'], {'user_ids':'1'} ), ('users.get', ['uid', 'first_name', 'last_name'], {'user_ids':'2'} ) ]
+    >>> rest.multi_threading_execute(args_list)
+    [(1, u'\u041f\u0430\u0432\u0435\u043b', u'\u0414\u0443\u0440\u043e\u0432'), (2, u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440\u0430', u'\u0412\u043b\u0430\u0434\u0438\u043c\u0438\u0440\u043e\u0432\u0430')]
+    """
+    
+    output_data = []
+    locker = threading.Lock()
+    thread_list =[]
+
+    for item in args_list:
+      method_name, list_keys, in_arguments = item 
+      t = threading.Thread(target = self.fork_execute, args=(method_name, list_keys, in_arguments, output_data))
+      t.daemon = True
+      t.start()
+      thread_list.append(t)
+
+    for thread in thread_list:
+      thread.join()  
+
+    return output_data
+        
+
+  def fork_execute(self, method_name, list_keys, in_arguments, output_array):
+    """
+      Реализация потока. Выполняет один запрос к серверу и добавляет 
+      полученные данные в список output_array, выполняющий роль 
+      аккумулятораполученных данных в нескольких потоках.
+      method_name -- 
+      list_keys -- 
+      in_arguments --    
+    """  
+    self.locker.acquire(True)
+    response = self.execute_3(method_name, list_keys, in_arguments )
+    
+    if str(type(response)) == "<type 'list'>":    
+      for item in response:
+        output_array.append(item)
+    else:
+      """ 
+        в случае если не заданы список возвращаемых данных (полей),
+        list_keys = [] execute_3 вернёт строку. 
+      """
+      output_array.append(response)
+      
+    self.locker.release()
 
 
   def get_count(self):
