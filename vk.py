@@ -13,6 +13,7 @@
 import httplib
 import json
 import threading
+import progressbar
   
 class vk():
   def __init__(self):
@@ -27,6 +28,7 @@ class vk():
       для защиты массива в который 'собираются' все дянные полученные
       от сервера из нескольких потоков. """
     self.locker = threading.Lock()
+    
       
   def __del__(self):
     self.__connect.close()
@@ -134,10 +136,11 @@ class vk():
       raise BaseException(error_string)
 
 
-  def multi_threading_execute(self, args_list):
+  def multi_threading_execute(self, args_list, process_bar=False):
     """
       Многопоточный вариант метода execute().
       args_list -- 
+      process_bar -- 
             
     >>> rest = vk()
     >>> args_list=[('users.get', ['uid', 'first_name', 'last_name'], {'user_ids':'1'} ), ('users.get', ['uid', 'first_name', 'last_name'], {'user_ids':'2'} ) ]
@@ -148,10 +151,17 @@ class vk():
     output_data = []
     locker = threading.Lock()
     thread_list =[]
+    
+    if process_bar:
+      self.progress_bar = progressbar.ProgressBar(maxval=len(args_list),
+                                       widgets=['Count complied request: ',
+                                       progressbar.SimpleProgress(),  '  ',
+                                       progressbar.Bar(left='[', marker='+', right=']')]).start()
+      self.coun_threads_complied = 0;
 
     for item in args_list:
       method_name, list_keys, in_arguments = item 
-      t = threading.Thread(target = self.fork_execute, args=(method_name, list_keys, in_arguments, output_data))
+      t = threading.Thread(target = self.fork_execute, args=(method_name, list_keys, in_arguments, output_data, process_bar))
       t.daemon = True
       t.start()
       thread_list.append(t)
@@ -162,7 +172,7 @@ class vk():
     return output_data
         
 
-  def fork_execute(self, method_name, list_keys, in_arguments, output_array):
+  def fork_execute(self, method_name, list_keys, in_arguments, output_array, process_bar):
     """
       Реализация потока. Выполняет один запрос к серверу и добавляет 
       полученные данные в список output_array, выполняющий роль 
@@ -170,6 +180,7 @@ class vk():
       method_name -- 
       list_keys -- 
       in_arguments --    
+      process_bar -- 
     """  
     self.locker.acquire(True)
     response = self.execute_3(method_name, list_keys, in_arguments )
@@ -185,6 +196,9 @@ class vk():
       output_array.append(response)
       
     self.locker.release()
+    if process_bar:
+      self.coun_threads_complied += 1
+      self.progress_bar.update(self.coun_threads_complied)
 
 
   def get_count(self):
