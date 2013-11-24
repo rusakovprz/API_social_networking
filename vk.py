@@ -291,6 +291,24 @@ class vk():
     return return_list 
 
 
+  @staticmethod  
+  def check_structure(structure):
+    """
+      Проверяет корректность структуры опписывающей набор данных для генерации
+      данных args_list используемых во время вызова  multi_threading_execute()
+    
+      structure -- входная конфигурационная структура
+    
+      Возвращает:
+      True - если структура корректна.
+      False - если структура не корректна.
+    
+  """
+    if structure.keys() == [u'method_name', u'in_arguments_iterable', u'in_arguments_constant', u'list_keys']:
+      return True
+    else:
+      return False
+
 
 if __name__ == "__main__":
 
