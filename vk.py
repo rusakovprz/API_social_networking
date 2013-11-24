@@ -295,7 +295,28 @@ class vk():
   @staticmethod  
   def create_arg_list(json_string):
     """
-      
+      Создаёт arg_list используемый в качестве аргумента
+      метода multi_threading_execute.  
+    
+    Пример входной JSON - структуры:
+    
+    args_cfg = '\n\
+{\n\
+  "method_name":"users.search", \n\
+  "list_keys":["uid", "first_name", "last_name"], \n\
+\
+  "in_arguments_constant":\n\
+    {"city":"10"},\n\
+\
+  "in_arguments_iterable": \n\
+  [\n\
+    {"name":"birth_year",  "begin_value":"1983", "end_value":"1983"},\n\
+    {"name":"birth_month",  "begin_value":"10", "end_value":"10"},\n\
+    {"name":"birth_day",  "begin_value":"1", "end_value":"10"},\n\
+    {"name":"interests", "values":["shop", "games", "sport"]}\n\
+  ]\n\
+}\n'
+    
     """
     cfg = json.loads(json_string)
     if not vk.check_structure(cfg):
