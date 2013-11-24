@@ -14,6 +14,7 @@ import httplib
 import json
 import threading
 import progressbar
+import copy
   
 class vk():
   def __init__(self):
@@ -292,6 +293,46 @@ class vk():
 
 
   @staticmethod  
+  def create_arg_list(json_string):
+    """
+      
+    """
+    cfg = json.loads(json_string)
+    if not vk.check_structure(cfg):
+      raise BaseException("Неверная структура конфигурационных данных.")
+    
+    """ Создаёт список 'values' на основе 'begin_value' и 'end_value' 
+        для значений секции 'in_arguments_iterable'. 
+    """
+    for item in cfg.get("in_arguments_iterable"):
+      if not item.has_key("values") and (item.has_key("begin_value") and item.has_key("end_value")):
+        item["values"] = vk.numeric_list_to_str_list( range( int(item.get("begin_value")), int(item.get("end_value"))+1 ) )
+    
+    """ Значения аргументов постоянные для всех запросов. """
+    args_const = (cfg.get('method_name'), cfg.get('list_keys'), cfg.get('in_arguments_constant') )
+    
+    """ 'Матрица' изменяемых значений. """
+    matrix = []
+    for argument in cfg.get('in_arguments_iterable'):
+      line = []
+      for item in argument.get('values'):
+        line.append( (argument.get('name'), item) )
+      matrix.append(line)
+    
+    r_matrix = vk.recursive_matrix([], matrix, [])
+    
+    """ Собственно сам список аргументов """
+    args_list = []
+    for string in r_matrix:
+      args = copy.deepcopy(args_const)
+      for item in string:
+        args[2][item[0]] = item[1]
+      args_list.append(args)
+    
+    return args_list
+    
+    
+  @staticmethod  
   def check_structure(structure):
     """
       Проверяет корректность структуры опписывающей набор данных для генерации
@@ -308,6 +349,38 @@ class vk():
       return True
     else:
       return False
+
+
+  @staticmethod
+  def numeric_list_to_str_list(in_list):
+    """
+      Преобразует список целочисленных хначений в список их строковых представлений.
+    
+    >>> vk.numeric_list_to_str_list([1, 2, 3])
+    ['1', '2', '3']
+    """
+    out_list = []
+    for item in in_list:
+      out_list.append(str(item))  
+    return out_list
+
+
+  @staticmethod
+  def recursive_matrix(head, in_matrix, out_matrix):
+    """
+      Создаёт список всех возможных комбинаций аргументов.
+    """
+    if len(in_matrix) >= 1: 
+      for item in in_matrix[0]:
+        """ формируем 'голову' """
+        h = list(head)
+        h.append( (item[0], item[1]) )
+        """ делаем рекурсию """
+        vk.recursive_matrix(h, in_matrix[1:], out_matrix)
+    elif len(in_matrix) == 0:
+      out_matrix.append(head)   
+    return out_matrix
+
 
 
 if __name__ == "__main__":
