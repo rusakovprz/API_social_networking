@@ -15,6 +15,7 @@ import json
 import threading
 import progressbar
 import copy
+import time
   
 class vk():
   def __init__(self):
@@ -166,6 +167,7 @@ class vk():
       t.daemon = True
       t.start()
       thread_list.append(t)
+      time.sleep(0.75)
 
     for thread in thread_list:
       thread.join()  
