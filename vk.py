@@ -134,8 +134,8 @@ class vk():
       error_string += 'error_code     = ' + str(json_data.get('error').get('error_code')) + '\n'
       error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
       error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
-      raise BaseException(error_string)
-
+      print error_string
+      
 
   def multi_threading_execute(self, args_list, process_bar=False):
     """
