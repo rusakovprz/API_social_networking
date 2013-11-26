@@ -270,6 +270,11 @@ class vk():
     >>> keys = ['key3', 'key2', 'key1']
     >>> vk.serialization(data, keys )
     [('value13', 'value12', 'value11'), ('value23', 'value22', 'value21')]
+    
+    >>> data = [{'key1':u'\u041f\u0440\u0435\u0434\u0438\u0441\u043b\u043e\u0432\u0438\u0435'}]
+    >>> keys = []
+    >>> vk.serialization(data, keys )
+    [('Предисловие')]
        
     """    
     
@@ -280,12 +285,16 @@ class vk():
       list_keys = data[0].keys()
 
     return_list = []
+    value = ''
     
     for index in range(len(data)):
       tmp_list = []
       try:
         for key in list_keys:
-          value = data[index].get(key)
+          if str(type(data[index].get(key))) == "<type 'unicode'>":
+            value = data[index].get(key).encode('utf8','backslashreplace')
+          else:
+            value = data[index].get(key)
           tmp_list.append(value)
         return_list.append(tuple(tmp_list))      
       except:
