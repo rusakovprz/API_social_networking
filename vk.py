@@ -129,14 +129,15 @@ class vk():
         return answer
       else:
         return  self.serialization(json_data.get('response'), list_keys)
-            
+
     elif json_data.has_key("error"):
       error_string = 'От REST-server Получена ошибка.\n'
       error_string += 'error_code     = ' + str(json_data.get('error').get('error_code')) + '\n'
       error_string += 'error_msg      = ' + str(json_data.get('error').get('error_msg')) + '\n'
       error_string += 'request_params = ' + str(json_data.get('error').get('request_params')) + '\n'
       print error_string
-      
+      return list()
+
 
   def multi_threading_execute(self, args_list, process_bar=False):
     """
@@ -159,6 +160,7 @@ class vk():
                                        widgets=['Count complied request: ',
                                        progressbar.SimpleProgress(),  '  ',
                                        progressbar.Bar(left='[', marker='+', right=']')]).start()
+                                       
       self.coun_threads_complied = 0;
 
     for item in args_list:
@@ -270,12 +272,6 @@ class vk():
     >>> keys = ['key3', 'key2', 'key1']
     >>> vk.serialization(data, keys )
     [('value13', 'value12', 'value11'), ('value23', 'value22', 'value21')]
-    
-    >>> data = [{'key1':u'\u041f\u0440\u0435\u0434\u0438\u0441\u043b\u043e\u0432\u0438\u0435'}]
-    >>> keys = []
-    >>> vk.serialization(data, keys )
-    [('Предисловие')]
-       
     """    
     
     if len(data) == 0:
